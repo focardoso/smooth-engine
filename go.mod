@@ -1,4 +1,4 @@
-module github.com/focardoso/smooth-gorm
+module github.com/focardoso/smooth-engine
 
 go 1.25.1
 
