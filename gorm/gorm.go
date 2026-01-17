@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/focardoso/smooth-orm"
 	"gorm.io/driver/postgres"
@@ -53,15 +54,30 @@ func Open(config Config) smooth.Engine {
 }
 
 func (e *GormEngine) First(ctx context.Context, i interface{}, query smooth.Query) error {
+	v := reflect.ValueOf(i)
+	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Ptr {
+		return errors.New("out must be **T")
+	}
+
+	// Se o ponteiro já não for nil → erro
+	if !v.Elem().IsNil() {
+		return errors.New("destination pointer must be nil")
+	}
+
+	elemType := v.Elem().Type().Elem() // T
+	tmp := reflect.New(elemType)       // *T
+
 	db := e.QueryConstructor(query, nil)
-	result := db.First(i)
+	result := db.First(tmp.Interface())
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return smooth.ErrRecordNotFound
+			// return smooth.ErrRecordNotFound
+			return nil
 		} else {
 			return result.Error
 		}
 	}
+	v.Elem().Set(tmp)
 	return nil
 }
 
